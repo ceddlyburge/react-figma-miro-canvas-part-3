@@ -26,8 +26,8 @@ export const Canvas = ({
           return {
             ...card,
             coordinates: {
-              x: card.coordinates.x + delta.x,
-              y: card.coordinates.y + delta.y,
+              x: card.coordinates.x + delta.x / transform.k,
+              y: card.coordinates.y + delta.y / transform.k,
             },
           };
         }
