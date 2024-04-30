@@ -40,9 +40,13 @@ const calculateCanvasPosition = (
 });
 
 export const App = () => {
-  const [cards, setCards] = useState<Card[]>([
-    { id: "Hello", coordinates: { x: 0, y: 0 }, text: "Hello" },
-  ]);
+  const [cards, setCards] = useState<Card[]>(
+    [...Array(5000).keys()].map((i) => ({
+      id: i.toString(),
+      coordinates: { x: i * 10, y: i * 10 },
+      text: i.toString(),
+    }))
+  );
 
   const [draggedTrayCardId, setDraggedTrayCardId] =
     useState<UniqueIdentifier | null>(null);
