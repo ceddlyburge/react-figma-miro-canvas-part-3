@@ -1,0 +1,1 @@
+.card,.trayCard,.trayOverlayCard{box-sizing:content-box;padding:10px;border-radius:3px;border-color:#d2691e;border-width:1px;border-style:solid;background-color:bisque;color:#000;cursor:grab}.tray{display:flex;margin-bottom:10px;flex-wrap:wrap}.canvasWindow{overflow:hidden;border-radius:3px;border-color:#d2691e;border-width:1px;border-style:solid;background-color:snow}
