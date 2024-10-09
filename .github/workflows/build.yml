@@ -8,7 +8,7 @@ on:
   workflow_call:
 
 jobs:
-  main:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,3 +25,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Upload production-ready build files
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-files
+          path: ./dist
