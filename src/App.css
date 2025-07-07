@@ -1,13 +1,22 @@
-.card, .trayCard, .trayOverlayCard {
+:root {
+  --canvas-transform-x: 0;
+  --canvas-transform-y: 0;
+  --canvas-transform-k: 1;
+}
+
+.card,
+.trayCard,
+.trayOverlayCard {
   box-sizing: content-box;
   padding: 10px;
   border-radius: 3px;
-  border-color:chocolate;
+  border-color: chocolate;
   border-width: 1px;
   border-style: solid;
-  background-color:bisque;
-  color:black;
-  cursor: grab
+  background-color: bisque;
+  color: black;
+  cursor: grab;
+  width: max-content;
 }
 
 .tray {
@@ -19,8 +28,8 @@
 .canvasWindow {
   overflow: hidden;
   border-radius: 3px;
-  border-color:chocolate;
+  border-color: chocolate;
   border-width: 1px;
   border-style: solid;
-  background-color:snow;
+  background-color: snow;
 }

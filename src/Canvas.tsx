@@ -1,40 +1,47 @@
-import { DndContext, useDroppable } from "@dnd-kit/core";
-import { DragEndEvent } from "@dnd-kit/core/dist/types";
+import { DndContext, DragOverlay, useDroppable } from "@dnd-kit/core";
+import { DragEndEvent, UniqueIdentifier } from "@dnd-kit/core/dist/types";
 import { select } from "d3-selection";
 import { ZoomTransform, zoom } from "d3-zoom";
-import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { RefObject, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Card } from "./App";
-import { Draggable } from "./Draggable";
+import { Draggable, NonDraggable } from "./Draggable";
 
 export const Canvas = ({
   cards,
   setCards,
-  transform,
+  transformRef,
   setTransform,
 }: {
   cards: Card[];
   setCards: (cards: Card[]) => void;
-  transform: ZoomTransform;
+  transformRef: RefObject<ZoomTransform>;
   setTransform(transform: ZoomTransform): void;
 }) => {
-  const updateDraggedCardPosition = ({ delta, active }: DragEndEvent) => {
+
+  const refCards = useRef<Card[]>(cards);
+  // remove transform from the dependencies and use a ref, this is an event so can use a ref without a problem
+  // then hopefully the DndContext won't re render when we zoom 
+  // want to think about panning as well, make that fast.
+  const updateDraggedCardPosition = useCallback(({ delta, active }: DragEndEvent) => {
     if (!delta.x && !delta.y) return;
 
     setCards(
-      cards.map((card) => {
+      refCards.current?.map((card) => {
         if (card.id === active.id) {
           return {
             ...card,
             coordinates: {
-              x: card.coordinates.x + delta.x / transform.k,
-              y: card.coordinates.y + delta.y / transform.k,
+              x: card.coordinates.x + delta.x / (transformRef.current?.k ?? 1),
+              y: card.coordinates.y + delta.y / (transformRef.current?.k ?? 1),
             },
           };
         }
         return card;
       })
     );
-  };
+  }, [setCards, transformRef]);
+
+  const [hoverCardId, setHoverCardId] = useState<UniqueIdentifier | null>()
 
   const { setNodeRef } = useDroppable({
     id: "canvas",
@@ -69,6 +76,14 @@ export const Canvas = ({
     select<HTMLDivElement, unknown>(canvasRef.current).call(zoomBehavior);
   }, [zoomBehavior, canvasRef, updateTransform]);
 
+  const children =
+    cards.map((card) => (
+      (card.id === hoverCardId) ?
+        <Draggable card={card} key={card.id} />
+        : <NonDraggable card={card} key={card.id} onMouseEnter={() => setHoverCardId(card.id)} />
+    ))
+
+
   return (
     <div ref={updateAndForwardRef} className="canvasWindow">
       <div
@@ -76,15 +91,26 @@ export const Canvas = ({
         style={{
           // apply the transform from d3
           transformOrigin: "top left",
-          transform: `translate3d(${transform.x}px, ${transform.y}px, ${transform.k}px)`,
+          transform: `translate3d(calc(1px * var(--canvas-transform-x)), calc(1px * var(--canvas-transform-y)), calc(1px * var(--canvas-transform-k)))`,
           position: "relative",
-          height: "300px",
+          height: "600px",
         }}
       >
         <DndContext onDragEnd={updateDraggedCardPosition}>
-          {cards.map((card) => (
-            <Draggable card={card} key={card.id} canvasTransform={transform} />
-          ))}
+          <>
+            {children}
+            <DragOverlay>
+              <div
+                style={{
+                  transformOrigin: "top left",
+                  transform: `scale(calc(1 * var(--canvas-transform-k)))`,
+                }}
+                className="trayOverlayCard"
+              >
+                1 - 1
+              </div>
+            </DragOverlay>
+          </>
         </DndContext>
       </div>
     </div>

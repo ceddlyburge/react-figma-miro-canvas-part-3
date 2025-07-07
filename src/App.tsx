@@ -7,7 +7,7 @@ import {
 } from "@dnd-kit/core";
 import { Coordinates, DragEndEvent, Translate } from "@dnd-kit/core/dist/types";
 import { ZoomTransform, zoomIdentity } from "d3-zoom";
-import { useState } from "react";
+import { SetStateAction, useCallback, useMemo, useRef, useState } from "react";
 import { Addable } from "./Addable";
 import "./App.css";
 import { Canvas } from "./Canvas";
@@ -40,17 +40,33 @@ const calculateCanvasPosition = (
 });
 
 export const App = () => {
-  const [cards, setCards] = useState<Card[]>([
-    { id: "Hello", coordinates: { x: 0, y: 0 }, text: "Hello" },
-  ]);
+  const [cards, setCards] = useState<Card[]>(
+    [...Array(100).keys()].flatMap((x) =>
+      [...Array(100).keys()].map((y) => (
+        {
+          id: `${x}-${y}`,
+          coordinates: { x: x * 80, y: y * 50 },
+          text: `${x}-${y}`
+        }
+      )
+      ))
+  );
 
   const [draggedTrayCardId, setDraggedTrayCardId] =
     useState<UniqueIdentifier | null>(null);
 
   // store the current transform from d3
-  const [transform, setTransform] = useState(zoomIdentity);
+  const [transform, _setTransform] = useState(zoomIdentity);
+  const transformRef = useRef(transform);
+  const setTransform = useCallback((theTransform: ZoomTransform) => {
+    document.documentElement.style.setProperty('--canvas-transform-x', theTransform.x.toString());
+    document.documentElement.style.setProperty('--canvas-transform-y', theTransform.y.toString());
+    document.documentElement.style.setProperty('--canvas-transform-k', theTransform.k.toString());
+    transformRef.current = theTransform;
+    _setTransform(theTransform);
+  }, [_setTransform]);
 
-  const addDraggedTrayCardToCanvas = ({
+  const addDraggedTrayCardToCanvas = useCallback(({
     over,
     active,
     delta,
@@ -68,37 +84,40 @@ export const App = () => {
           active.rect.current.initial,
           over,
           delta,
-          transform
+          transformRef.current
         ),
         text: active.id.toString(),
       },
     ]);
-  };
+  }, [setDraggedTrayCardId, setCards]);
+  const startDrag = useCallback(({ active }) => setDraggedTrayCardId(active.id), []);
+
+  const trayCardsComponents = useMemo(() => trayCards.map((trayCard) => {
+    // this line removes the card from the tray if it's already on the canvas
+    if (cards.find((card) => card.id === trayCard.id)) return null;
+
+    return <Addable card={trayCard} key={trayCard.id} />;
+  }), [trayCards, cards]);
 
   return (
     <DndContext
-      onDragStart={({ active }) => setDraggedTrayCardId(active.id)}
+      onDragStart={startDrag}
       onDragEnd={addDraggedTrayCardToCanvas}
     >
       <div className="tray">
-        {trayCards.map((trayCard) => {
-          // this line removes the card from the tray if it's already on the canvas
-          if (cards.find((card) => card.id === trayCard.id)) return null;
-
-          return <Addable card={trayCard} key={trayCard.id} />;
-        })}
+        {trayCardsComponents}
       </div>
       <Canvas
         cards={cards}
         setCards={setCards}
-        transform={transform}
+        transformRef={transformRef}
         setTransform={setTransform}
       />
       <DragOverlay>
         <div
           style={{
             transformOrigin: "top left",
-            transform: `scale(${transform.k})`,
+            transform: `scale(calc(1 * var(--canvas-transform-k)))`,
           }}
           className="trayOverlayCard"
         >
