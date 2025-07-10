@@ -19,6 +19,13 @@
   width: max-content;
 }
 
+.cardCover {
+  cursor: unset;
+  color: snow;
+  border-color: snow;
+  background-color: snow;
+}
+
 .tray {
   display: flex;
   margin-bottom: 10px;

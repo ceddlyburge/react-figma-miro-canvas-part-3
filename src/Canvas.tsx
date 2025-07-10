@@ -2,9 +2,27 @@ import { DndContext, DragOverlay, useDroppable } from "@dnd-kit/core";
 import { DragEndEvent, UniqueIdentifier } from "@dnd-kit/core/dist/types";
 import { select } from "d3-selection";
 import { ZoomTransform, zoom } from "d3-zoom";
-import { RefObject, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, RefObject, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Card } from "./App";
-import { Draggable, NonDraggable } from "./Draggable";
+import { Cover, Draggable, NonDraggable } from "./Draggable";
+
+// Always display all the cards, even when one becomes draggable, which makes it performant with memo
+// When the mouse is over a card, a Draggable is placed over the top of the NonDraggable one and hides it.
+const AllCards = memo(({
+  cards,
+  setHoverCard
+
+}: {
+  cards: Card[];
+  setHoverCard(card: Card): void;
+}) => {
+  return (<>
+    {cards.map((card) => (
+      <NonDraggable card={card} key={card.id} onMouseEnter={() => setHoverCard(card)} />
+    ))}
+  </>)
+})
+AllCards.displayName = 'AllCards';
 
 export const Canvas = ({
   cards,
@@ -17,31 +35,42 @@ export const Canvas = ({
   transformRef: RefObject<ZoomTransform>;
   setTransform(transform: ZoomTransform): void;
 }) => {
+  const [isDragging, setIsDragging] = useState(false);
 
-  const refCards = useRef<Card[]>(cards);
-  // remove transform from the dependencies and use a ref, this is an event so can use a ref without a problem
-  // then hopefully the DndContext won't re render when we zoom 
-  // want to think about panning as well, make that fast.
+  const setDragging = () => setIsDragging(true);
+
+  // remove transform from the dependencies and use a ref, this is an event so can use a ref
+  // without a problem. This gives the DndContext less reasons to rerender, and means the cache 
+  // check is a bit quicker.
+  // todo: see how much of a difference this makes and whether it is worth it
   const updateDraggedCardPosition = useCallback(({ delta, active }: DragEndEvent) => {
+    console.log('updateDraggedCardPosition')
     if (!delta.x && !delta.y) return;
 
+
     setCards(
-      refCards.current?.map((card) => {
+      cards.map((card) => {
         if (card.id === active.id) {
-          return {
+
+          const newCard = {
             ...card,
             coordinates: {
               x: card.coordinates.x + delta.x / (transformRef.current?.k ?? 1),
               y: card.coordinates.y + delta.y / (transformRef.current?.k ?? 1),
             },
           };
+
+          setHoverCard(newCard);
+          return newCard;
         }
         return card;
       })
     );
-  }, [setCards, transformRef]);
 
-  const [hoverCardId, setHoverCardId] = useState<UniqueIdentifier | null>()
+    setIsDragging(false);
+  }, [cards, setCards, transformRef]);
+
+  const [hoverCard, setHoverCard] = useState<Card | null>()
 
   const { setNodeRef } = useDroppable({
     id: "canvas",
@@ -76,14 +105,6 @@ export const Canvas = ({
     select<HTMLDivElement, unknown>(canvasRef.current).call(zoomBehavior);
   }, [zoomBehavior, canvasRef, updateTransform]);
 
-  const children =
-    cards.map((card) => (
-      (card.id === hoverCardId) ?
-        <Draggable card={card} key={card.id} />
-        : <NonDraggable card={card} key={card.id} onMouseEnter={() => setHoverCardId(card.id)} />
-    ))
-
-
   return (
     <div ref={updateAndForwardRef} className="canvasWindow">
       <div
@@ -96,21 +117,14 @@ export const Canvas = ({
           height: "600px",
         }}
       >
-        <DndContext onDragEnd={updateDraggedCardPosition}>
-          <>
-            {children}
-            <DragOverlay>
-              <div
-                style={{
-                  transformOrigin: "top left",
-                  transform: `scale(calc(1 * var(--canvas-transform-k)))`,
-                }}
-                className="trayOverlayCard"
-              >
-                1 - 1
-              </div>
-            </DragOverlay>
-          </>
+        <DndContext onDragEnd={updateDraggedCardPosition} onDragStart={setDragging}>
+          {/* onmouseenter gets triggered here if you move the mouse fast and it outpaces the card */}
+          <div
+            style={{ pointerEvents: isDragging ? "none" : "auto" }}
+          >
+            <AllCards cards={cards} setHoverCard={setHoverCard} />
+          </div>
+          {hoverCard ? <><Cover card={hoverCard} /><Draggable card={hoverCard} /></> : null}
         </DndContext>
       </div>
     </div>
