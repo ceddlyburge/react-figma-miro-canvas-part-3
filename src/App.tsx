@@ -7,7 +7,7 @@ import {
 } from "@dnd-kit/core";
 import { Coordinates, DragEndEvent, Translate } from "@dnd-kit/core/dist/types";
 import { ZoomTransform, zoomIdentity } from "d3-zoom";
-import { SetStateAction, useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Addable } from "./Addable";
 import "./App.css";
 import { Canvas } from "./Canvas";
@@ -42,7 +42,7 @@ const calculateCanvasPosition = (
 export const App = () => {
   const [cards, setCards] = useState<Card[]>(
     [...Array(100).keys()].flatMap((x) =>
-      [...Array(100).keys()].map((y) => (
+      [...Array(2000).keys()].map((y) => (
         {
           id: `${x}-${y}`,
           coordinates: { x: x * 80, y: y * 50 },
@@ -55,16 +55,47 @@ export const App = () => {
   const [draggedTrayCardId, setDraggedTrayCardId] =
     useState<UniqueIdentifier | null>(null);
 
+  const [hoverCard, setHoverCard] = useState<Card | null>()
+
   // store the current transform from d3
   const [transform, _setTransform] = useState(zoomIdentity);
   const transformRef = useRef(transform);
   const setTransform = useCallback((theTransform: ZoomTransform) => {
-    document.documentElement.style.setProperty('--canvas-transform-x', theTransform.x.toString());
-    document.documentElement.style.setProperty('--canvas-transform-y', theTransform.y.toString());
-    document.documentElement.style.setProperty('--canvas-transform-k', theTransform.k.toString());
+    console.log('setTransform');
+
+    const canvasElement = document.getElementById('canvas');
+    if (canvasElement) {
+      canvasElement.style.transform = `translate3d(${theTransform.x}px, ${theTransform.y}px, ${theTransform.k}px)`
+    }
+
+    if (hoverCard) {
+      const coverElement = document.getElementById('cover');
+      if (coverElement) {
+        coverElement.style.top = `${hoverCard.coordinates.y * theTransform.k}px`;
+        coverElement.style.left = `${hoverCard.coordinates.x * theTransform.k}px`;
+        coverElement.style.transform = `scale(${theTransform.k})`;
+      }
+
+      const draggableElement = document.getElementById('draggable');
+      if (draggableElement) {
+        draggableElement.style.top = `${hoverCard.coordinates.y * theTransform.k}px`;
+        draggableElement.style.left = `${hoverCard.coordinates.x * theTransform.k}px`;
+        draggableElement.style.transform = `scale(${theTransform.k})`;
+      }
+    }
+
+    cards.forEach(card => {
+      const element = document.getElementById(card.id.toString());
+      if (element) {
+        element.style.top = `${card.coordinates.y * theTransform.k}px`;
+        element.style.left = `${card.coordinates.x * theTransform.k}px`;
+        element.style.transform = `scale(${theTransform.k})`;
+      }
+    });
+
     transformRef.current = theTransform;
     _setTransform(theTransform);
-  }, [_setTransform]);
+  }, [_setTransform, hoverCard]);
 
   const addDraggedTrayCardToCanvas = useCallback(({
     over,
@@ -110,6 +141,8 @@ export const App = () => {
       <Canvas
         cards={cards}
         setCards={setCards}
+        hoverCard={hoverCard}
+        setHoverCard={setHoverCard}
         transformRef={transformRef}
         setTransform={setTransform}
       />
@@ -117,7 +150,7 @@ export const App = () => {
         <div
           style={{
             transformOrigin: "top left",
-            transform: `scale(calc(1 * var(--canvas-transform-k)))`,
+            transform: `scale(${transform.k})`,
           }}
           className="trayOverlayCard"
         >

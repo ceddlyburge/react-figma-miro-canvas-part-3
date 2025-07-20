@@ -1,5 +1,5 @@
-import { DndContext, DragOverlay, useDroppable } from "@dnd-kit/core";
-import { DragEndEvent, UniqueIdentifier } from "@dnd-kit/core/dist/types";
+import { DndContext, useDroppable } from "@dnd-kit/core";
+import { DragEndEvent } from "@dnd-kit/core/dist/types";
 import { select } from "d3-selection";
 import { ZoomTransform, zoom } from "d3-zoom";
 import { memo, RefObject, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -10,15 +10,17 @@ import { Cover, Draggable, NonDraggable } from "./Draggable";
 // When the mouse is over a card, a Draggable is placed over the top of the NonDraggable one and hides it.
 const AllCards = memo(({
   cards,
-  setHoverCard
-
+  setHoverCard,
+  transformRef,
 }: {
   cards: Card[];
   setHoverCard(card: Card): void;
+  transformRef: RefObject<ZoomTransform>;
+
 }) => {
   return (<>
     {cards.map((card) => (
-      <NonDraggable card={card} key={card.id} onMouseEnter={() => setHoverCard(card)} />
+      <NonDraggable card={card} key={card.id} onMouseEnter={() => { setHoverCard(card); console.log('onMouseEnter', card.id); }} transformRef={transformRef} />
     ))}
   </>)
 })
@@ -27,26 +29,35 @@ AllCards.displayName = 'AllCards';
 export const Canvas = ({
   cards,
   setCards,
+  hoverCard,
+  setHoverCard,
   transformRef,
   setTransform,
 }: {
   cards: Card[];
   setCards: (cards: Card[]) => void;
+  hoverCard: Card | null | undefined;
+  setHoverCard: (card: Card) => void;
   transformRef: RefObject<ZoomTransform>;
   setTransform(transform: ZoomTransform): void;
 }) => {
   const [isDragging, setIsDragging] = useState(false);
 
-  const setDragging = () => setIsDragging(true);
+  const setDragging = () => {
+    setIsDragging(true);
+    console.log('startDragging');
+  }
 
   // remove transform from the dependencies and use a ref, this is an event so can use a ref
   // without a problem. This gives the DndContext less reasons to rerender, and means the cache 
   // check is a bit quicker.
   // todo: see how much of a difference this makes and whether it is worth it
   const updateDraggedCardPosition = useCallback(({ delta, active }: DragEndEvent) => {
-    console.log('updateDraggedCardPosition')
+    setIsDragging(false);
+
     if (!delta.x && !delta.y) return;
 
+    console.log('updateDraggedCardPosition');
 
     setCards(
       cards.map((card) => {
@@ -67,10 +78,7 @@ export const Canvas = ({
       })
     );
 
-    setIsDragging(false);
   }, [cards, setCards, transformRef]);
-
-  const [hoverCard, setHoverCard] = useState<Card | null>()
 
   const { setNodeRef } = useDroppable({
     id: "canvas",
@@ -108,23 +116,26 @@ export const Canvas = ({
   return (
     <div ref={updateAndForwardRef} className="canvasWindow">
       <div
+        id="canvas"
         className="canvas"
         style={{
           // apply the transform from d3
           transformOrigin: "top left",
-          transform: `translate3d(calc(1px * var(--canvas-transform-x)), calc(1px * var(--canvas-transform-y)), calc(1px * var(--canvas-transform-k)))`,
+          transform: `translate3d(${transformRef.current?.x ?? 0}px, ${transformRef.current?.y ?? 0}px, ${transformRef.current?.k ?? 1}px)`,
           position: "relative",
           height: "600px",
         }}
       >
         <DndContext onDragEnd={updateDraggedCardPosition} onDragStart={setDragging}>
-          {/* onmouseenter gets triggered here if you move the mouse fast and it outpaces the card */}
           <div
+            // otherise onMouseEnter gets triggered when dragging a card if you move the mouse fast 
+            // and it outpaces the card, which ends up in setHoverCard being called for a different
+            // card.
             style={{ pointerEvents: isDragging ? "none" : "auto" }}
           >
-            <AllCards cards={cards} setHoverCard={setHoverCard} />
+            <AllCards cards={cards} setHoverCard={setHoverCard} transformRef={transformRef} />
           </div>
-          {hoverCard ? <><Cover card={hoverCard} /><Draggable card={hoverCard} /></> : null}
+          {hoverCard ? <><Cover card={hoverCard} transformRef={transformRef} /><Draggable card={hoverCard} transformRef={transformRef} /></> : null}
         </DndContext>
       </div>
     </div>
