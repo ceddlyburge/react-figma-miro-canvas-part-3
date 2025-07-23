@@ -41,11 +41,15 @@ const calculateCanvasPosition = (
 
 export const App = () => {
   const [cards, setCards] = useState<Card[]>(
-    [...Array(5000).keys()].map((i) => ({
-      id: i.toString(),
-      coordinates: { x: i * 10, y: i * 10 },
-      text: i.toString(),
-    }))
+    [...Array(200).keys()].flatMap((x) =>
+      [...Array(100).keys()].map((y) => (
+        {
+          id: `${x}-${y}`,
+          coordinates: { x: x * 80, y: y * 50 },
+          text: `${x}-${y}`
+        }
+      )
+      ))
   );
 
   const [draggedTrayCardId, setDraggedTrayCardId] =

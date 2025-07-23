@@ -18,6 +18,8 @@ export const Canvas = ({
   setTransform(transform: ZoomTransform): void;
 }) => {
   const updateDraggedCardPosition = ({ delta, active }: DragEndEvent) => {
+    console.log('updateDraggedCardPosition');
+
     if (!delta.x && !delta.y) return;
 
     setCards(
@@ -53,6 +55,7 @@ export const Canvas = ({
   // update the transform when d3 zoom notifies of a change
   const updateTransform = useCallback(
     ({ transform }: { transform: ZoomTransform }) => {
+      console.log('setTransform');
       setTransform(transform);
     },
     [setTransform]
@@ -81,7 +84,7 @@ export const Canvas = ({
           height: "300px",
         }}
       >
-        <DndContext onDragEnd={updateDraggedCardPosition}>
+        <DndContext onDragEnd={updateDraggedCardPosition} onDragStart={() => console.log('startDragging')}>
           {cards.map((card) => (
             <Draggable card={card} key={card.id} canvasTransform={transform} />
           ))}
