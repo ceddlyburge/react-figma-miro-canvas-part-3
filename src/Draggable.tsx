@@ -63,21 +63,21 @@ export const NonDraggable = ({
   onMouseEnter: (e: any) => void;
 }) => {
   return (
-    <div
-      id={card.id.toString()}
-      className="card"
+    <div className="cardOuter"
       style={{
-        position: "absolute",
+        position: "relative",
         transformOrigin: "top left",
-        top: `${card.coordinates.y * (transformRef.current?.k ?? 1)}px`,
-        left: `${card.coordinates.x * (transformRef.current?.k ?? 1)}px`,
-        transform: `scale(${transformRef.current?.k ?? 1})`,
-
+        top: `${card.coordinates.y}px`,
+        left: `${card.coordinates.x}px`
       }}
-
-      onMouseEnter={onMouseEnter}
+      id={card.id.toString()}
     >
-      {card.text}
+      <div
+        className="card"
+        onMouseEnter={onMouseEnter}
+      >
+        {card.text}
+      </div>
     </div>)
 }
 

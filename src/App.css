@@ -1,7 +1,7 @@
-:root {
-  --canvas-transform-x: 0;
-  --canvas-transform-y: 0;
-  --canvas-transform-k: 1;
+.cardOuter {
+  height: 0;
+  width: 0;
+  overflow: visible;
 }
 
 .card,

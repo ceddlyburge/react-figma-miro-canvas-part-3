@@ -2,7 +2,7 @@ import { DndContext, useDroppable } from "@dnd-kit/core";
 import { DragEndEvent } from "@dnd-kit/core/dist/types";
 import { select } from "d3-selection";
 import { ZoomTransform, zoom } from "d3-zoom";
-import { memo, RefObject, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Card } from "./App";
 import { Cover, Draggable, NonDraggable } from "./Draggable";
 
@@ -19,9 +19,17 @@ const AllCards = memo(({
 
 }) => {
   return (<>
-    {cards.map((card) => (
-      <NonDraggable card={card} key={card.id} onMouseEnter={() => { setHoverCard(card); console.log('onMouseEnter', card.id); }} transformRef={transformRef} />
-    ))}
+    {cards.map((card) => {
+      const onMouseEnter = () => {
+        setHoverCard(card);
+        console.log('onMouseEnter', card.id);
+        performance.clearMarks();
+        performance.clearMeasures();
+        performance.mark('onMouseEnterStart');
+      }
+
+      return (<NonDraggable card={card} key={card.id} onMouseEnter={onMouseEnter} transformRef={transformRef} />)
+    })}
   </>)
 })
 AllCards.displayName = 'AllCards';
@@ -46,6 +54,9 @@ export const Canvas = ({
   const setDragging = () => {
     setIsDragging(true);
     console.log('startDragging');
+    performance.clearMarks();
+    performance.clearMeasures();
+    performance.mark('startDraggingStart');
   }
 
   // remove transform from the dependencies and use a ref, this is an event so can use a ref
@@ -57,7 +68,10 @@ export const Canvas = ({
 
     if (!delta.x && !delta.y) return;
 
-    console.log('updateDraggedCardPosition');
+    console.log('endDragging');
+    performance.clearMarks();
+    performance.clearMeasures();
+    performance.mark('endDraggingStart');
 
     setCards(
       cards.map((card) => {
@@ -83,6 +97,46 @@ export const Canvas = ({
   const { setNodeRef } = useDroppable({
     id: "canvas",
   });
+
+  useEffect(() => {
+    try {
+      performance.mark('onMouseEnterEnd');
+      performance.measure('onMouseEnter', 'onMouseEnterStart', 'onMouseEnterEnd');
+      const onMouseEnterMeasure = performance.getEntriesByName('onMouseEnter')?.[0];
+      console.log('onMouseEnter', onMouseEnterMeasure?.duration);
+    } catch { }
+
+    try {
+      performance.mark('startDraggingEnd');
+      performance.measure('startDragging', 'startDraggingStart', 'startDraggingEnd');
+      const startDraggingMeasure = performance.getEntriesByName('startDragging')?.[0];
+      console.log('startDragging', startDraggingMeasure?.duration);
+    } catch { }
+
+    try {
+      performance.mark('endDraggingEnd');
+      performance.measure('endDragging', 'endDraggingStart', 'endDraggingEnd');
+      const endDraggingMeasure = performance.getEntriesByName('endDragging')?.[0];
+      console.log('endDragging', endDraggingMeasure?.duration);
+    } catch { }
+
+    try {
+      performance.mark('panningEnd');
+      performance.measure('panning', 'panningStart', 'panningEnd');
+      const panningMeasure = performance.getEntriesByName('panning')?.[0];
+      console.log('panning', panningMeasure?.duration);
+    } catch { }
+
+    try {
+      performance.mark('zoomingEnd');
+      performance.measure('zooming', 'zoomingStart', 'zoomingEnd');
+      const zoomingMeasure = performance.getEntriesByName('zooming')?.[0];
+      console.log('zooming', zoomingMeasure?.duration);
+    } catch { }
+
+    performance.clearMarks();
+    performance.clearMeasures();
+  })
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
@@ -121,7 +175,8 @@ export const Canvas = ({
         style={{
           // apply the transform from d3
           transformOrigin: "top left",
-          transform: `translate3d(${transformRef.current?.x ?? 0}px, ${transformRef.current?.y ?? 0}px, ${transformRef.current?.k ?? 1}px)`,
+          transform: `translate(${transformRef.current?.x ?? 0}px, ${transformRef.current?.y ?? 0}px)`,
+          scale: `${transformRef.current?.k ?? 1}`,
           position: "relative",
           height: "600px",
         }}

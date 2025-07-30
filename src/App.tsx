@@ -42,7 +42,7 @@ const calculateCanvasPosition = (
 export const App = () => {
   const [cards, setCards] = useState<Card[]>(
     [...Array(100).keys()].flatMap((x) =>
-      [...Array(2000).keys()].map((y) => (
+      [...Array(10).keys()].map((y) => (
         {
           id: `${x}-${y}`,
           coordinates: { x: x * 80, y: y * 50 },
@@ -61,37 +61,48 @@ export const App = () => {
   const [transform, _setTransform] = useState(zoomIdentity);
   const transformRef = useRef(transform);
   const setTransform = useCallback((theTransform: ZoomTransform) => {
-    console.log('setTransform');
 
     const canvasElement = document.getElementById('canvas');
     if (canvasElement) {
       canvasElement.style.transform = `translate3d(${theTransform.x}px, ${theTransform.y}px, ${theTransform.k}px)`
     }
 
-    if (hoverCard) {
-      const coverElement = document.getElementById('cover');
-      if (coverElement) {
-        coverElement.style.top = `${hoverCard.coordinates.y * theTransform.k}px`;
-        coverElement.style.left = `${hoverCard.coordinates.x * theTransform.k}px`;
-        coverElement.style.transform = `scale(${theTransform.k})`;
+    if (theTransform.k !== transform.k) {
+      console.log('zooming');
+      performance.clearMarks();
+      performance.clearMeasures();
+      performance.mark('zoomingStart');
+
+      if (hoverCard) {
+        const coverElement = document.getElementById('cover');
+        if (coverElement) {
+          coverElement.style.top = `${hoverCard.coordinates.y * theTransform.k}px`;
+          coverElement.style.left = `${hoverCard.coordinates.x * theTransform.k}px`;
+          coverElement.style.transform = `scale(${theTransform.k})`;
+        }
+
+        const draggableElement = document.getElementById('draggable');
+        if (draggableElement) {
+          draggableElement.style.top = `${hoverCard.coordinates.y * theTransform.k}px`;
+          draggableElement.style.left = `${hoverCard.coordinates.x * theTransform.k}px`;
+          draggableElement.style.transform = `scale(${theTransform.k})`;
+        }
       }
 
-      const draggableElement = document.getElementById('draggable');
-      if (draggableElement) {
-        draggableElement.style.top = `${hoverCard.coordinates.y * theTransform.k}px`;
-        draggableElement.style.left = `${hoverCard.coordinates.x * theTransform.k}px`;
-        draggableElement.style.transform = `scale(${theTransform.k})`;
-      }
+      // cards.forEach(card => {
+      //   const element = document.getElementById(card.id.toString());
+      //   if (element) {
+      //     element.style.top = `${card.coordinates.y * theTransform.k}px`;
+      //     element.style.left = `${card.coordinates.x * theTransform.k}px`;
+      //     element.style.transform = `scale(${theTransform.k})`;
+      //   }
+      // });
+    } else {
+      console.log('panning');
+      performance.clearMarks();
+      performance.clearMeasures();
+      performance.mark('panningStart');
     }
-
-    cards.forEach(card => {
-      const element = document.getElementById(card.id.toString());
-      if (element) {
-        element.style.top = `${card.coordinates.y * theTransform.k}px`;
-        element.style.left = `${card.coordinates.x * theTransform.k}px`;
-        element.style.transform = `scale(${theTransform.k})`;
-      }
-    });
 
     transformRef.current = theTransform;
     _setTransform(theTransform);
@@ -121,7 +132,10 @@ export const App = () => {
       },
     ]);
   }, [setDraggedTrayCardId, setCards]);
-  const startDrag = useCallback(({ active }) => setDraggedTrayCardId(active.id), []);
+  const startDrag = useCallback(
+    ({ active }: { active: { id: UniqueIdentifier } }) => setDraggedTrayCardId(active.id),
+    []
+  );
 
   const trayCardsComponents = useMemo(() => trayCards.map((trayCard) => {
     // this line removes the card from the tray if it's already on the canvas
