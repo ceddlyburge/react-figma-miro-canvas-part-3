@@ -1,15 +1,14 @@
 import { useDraggable } from "@dnd-kit/core";
 import { Card } from "./App";
-import { RefObject } from "react";
 import { ZoomTransform } from "d3-zoom";
-
+import { RefObject } from "react";
 
 export const Draggable = ({
   card,
   transformRef
 }: {
-  card: Card;
-  transformRef: RefObject<ZoomTransform>;
+  card: Card | undefined;
+  transformRef: RefObject<ZoomTransform>
 }) => {
   const {
     attributes,
@@ -17,7 +16,7 @@ export const Draggable = ({
     setNodeRef,
     transform
   } = useDraggable({
-    id: card.id,
+    id: card?.id ?? 0,
   });
 
   return (
@@ -27,16 +26,17 @@ export const Draggable = ({
       style={{
         position: "absolute",
         transformOrigin: "top left",
-        top: `${card.coordinates.y * (transformRef.current?.k ?? 1)}px`,
-        left: `${card.coordinates.x * (transformRef.current?.k ?? 1)}px`,
+        top: `${card?.coordinates.y ?? 0}px`,
+        left: `${card?.coordinates.x ?? 0}px`,
+        display: card === undefined ? "none" : "block",
         ...(transform
           ? {
             // temporary change to this position when dragging
-            transform: `translate3d(${transform.x}px, ${transform.y}px, 0px) scale(${transformRef.current?.k ?? 1})`,
+            transform: `translateX(${transform.x / (transformRef.current?.k ?? 1)}px) translateY(${transform.y / (transformRef.current?.k ?? 1)}px)`,
           }
           : {
             // zoom to canvas zoom
-            transform: `scale(${transformRef.current?.k ?? 1})`,
+            // transform: `scale(${transformRef.current?.k ?? 1})`,
           }),
       }}
       ref={setNodeRef}
@@ -48,45 +48,39 @@ export const Draggable = ({
         e.preventDefault();
       }}
     >
-      {card.text}
+      {card?.text ?? ""}
     </div>
   );
 };
 
 export const NonDraggable = ({
   card,
-  transformRef,
   onMouseEnter
 }: {
   card: Card;
-  transformRef: RefObject<ZoomTransform>;
   onMouseEnter: (e: any) => void;
 }) => {
   return (
-    <div className="cardOuter"
+    <div
       style={{
-        position: "relative",
+        position: "absolute",
         transformOrigin: "top left",
         top: `${card.coordinates.y}px`,
-        left: `${card.coordinates.x}px`
+        left: `${card.coordinates.x}px`,
       }}
       id={card.id.toString()}
+      className="card"
+      onMouseEnter={onMouseEnter}
     >
-      <div
-        className="card"
-        onMouseEnter={onMouseEnter}
-      >
-        {card.text}
-      </div>
-    </div>)
+      {card.text}
+    </div>
+  )
 }
 
 export const Cover = ({
   card,
-  transformRef
 }: {
-  card: Card;
-  transformRef: RefObject<ZoomTransform>;
+  card: Card | undefined;
 }) => {
   return (
     <div
@@ -94,12 +88,12 @@ export const Cover = ({
       className="card cardCover"
       style={{
         position: "absolute",
-        top: `${card.coordinates.y * (transformRef.current?.k ?? 1)}px`,
-        left: `${card.coordinates.x * (transformRef.current?.k ?? 1)}px`,
-        transform: `scale(${transformRef.current?.k ?? 1})`,
         transformOrigin: "top left",
+        top: `${card?.coordinates.y ?? 0}px`,
+        left: `${card?.coordinates.x ?? 0}px`,
+        display: card === undefined ? "none" : "block",
       }}
     >
-      {card.text}
+      {card?.text ?? ""}
     </div>)
 }

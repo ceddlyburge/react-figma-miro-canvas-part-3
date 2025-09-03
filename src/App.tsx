@@ -41,8 +41,8 @@ const calculateCanvasPosition = (
 
 export const App = () => {
   const [cards, setCards] = useState<Card[]>(
-    [...Array(100).keys()].flatMap((x) =>
-      [...Array(10).keys()].map((y) => (
+    [...Array(1).keys()].flatMap((x) =>
+      [...Array(1000).keys()].map((y) => (
         {
           id: `${x}-${y}`,
           coordinates: { x: x * 80, y: y * 50 },
@@ -52,61 +52,37 @@ export const App = () => {
       ))
   );
 
+  // useEffect(() => {
+  //   try {
+  //     performance.mark('zoomingOrPanningEnd');
+  //     performance.measure('zoomingOrPanning', 'zoomingOrPanningStart', 'zoomingOrPanningEnd');
+  //     const zoomingOrPanningMeasure = performance.getEntriesByName('zoomingOrPanning')?.[0];
+  //     console.log('zoomingOrPanning', zoomingOrPanningMeasure?.duration);
+  //   } catch { }
+
+  //   performance.clearMarks();
+  //   performance.clearMeasures();
+  // })
+
   const [draggedTrayCardId, setDraggedTrayCardId] =
     useState<UniqueIdentifier | null>(null);
 
-  const [hoverCard, setHoverCard] = useState<Card | null>()
-
   // store the current transform from d3
-  const [transform, _setTransform] = useState(zoomIdentity);
-  const transformRef = useRef(transform);
-  const setTransform = useCallback((theTransform: ZoomTransform) => {
+  // const [transform, _setTransform] = useState(zoomIdentity);
+  const transformRef = useRef(zoomIdentity);
+  // const setTransform = useCallback((theTransform: ZoomTransform) => {
+  //   console.log('zoomingOrPanning');
+  //   performance.clearMarks();
+  //   performance.clearMeasures();
+  //   performance.mark('zoomingOrPanningStart');
 
-    const canvasElement = document.getElementById('canvas');
-    if (canvasElement) {
-      canvasElement.style.transform = `translate3d(${theTransform.x}px, ${theTransform.y}px, ${theTransform.k}px)`
-    }
+  //   const canvasElement = document.getElementById('canvas');
+  //   if (canvasElement) {
+  //     canvasElement.style.transform = `translateX(${theTransform.x}px) translateY(${theTransform.y}px) scale(${theTransform.k})`;
+  //   }
 
-    if (theTransform.k !== transform.k) {
-      console.log('zooming');
-      performance.clearMarks();
-      performance.clearMeasures();
-      performance.mark('zoomingStart');
-
-      if (hoverCard) {
-        const coverElement = document.getElementById('cover');
-        if (coverElement) {
-          coverElement.style.top = `${hoverCard.coordinates.y * theTransform.k}px`;
-          coverElement.style.left = `${hoverCard.coordinates.x * theTransform.k}px`;
-          coverElement.style.transform = `scale(${theTransform.k})`;
-        }
-
-        const draggableElement = document.getElementById('draggable');
-        if (draggableElement) {
-          draggableElement.style.top = `${hoverCard.coordinates.y * theTransform.k}px`;
-          draggableElement.style.left = `${hoverCard.coordinates.x * theTransform.k}px`;
-          draggableElement.style.transform = `scale(${theTransform.k})`;
-        }
-      }
-
-      // cards.forEach(card => {
-      //   const element = document.getElementById(card.id.toString());
-      //   if (element) {
-      //     element.style.top = `${card.coordinates.y * theTransform.k}px`;
-      //     element.style.left = `${card.coordinates.x * theTransform.k}px`;
-      //     element.style.transform = `scale(${theTransform.k})`;
-      //   }
-      // });
-    } else {
-      console.log('panning');
-      performance.clearMarks();
-      performance.clearMeasures();
-      performance.mark('panningStart');
-    }
-
-    transformRef.current = theTransform;
-    _setTransform(theTransform);
-  }, [_setTransform, hoverCard]);
+  //   transformRef.current = theTransform;
+  // }, []);
 
   const addDraggedTrayCardToCanvas = useCallback(({
     over,
@@ -132,6 +108,7 @@ export const App = () => {
       },
     ]);
   }, [setDraggedTrayCardId, setCards]);
+
   const startDrag = useCallback(
     ({ active }: { active: { id: UniqueIdentifier } }) => setDraggedTrayCardId(active.id),
     []
@@ -155,16 +132,16 @@ export const App = () => {
       <Canvas
         cards={cards}
         setCards={setCards}
-        hoverCard={hoverCard}
-        setHoverCard={setHoverCard}
         transformRef={transformRef}
-        setTransform={setTransform}
+      // setTransform={setTransform}
       />
+
       <DragOverlay>
         <div
           style={{
             transformOrigin: "top left",
-            transform: `scale(${transform.k})`,
+            // todo transform: `scale(${transform.k})`,
+            transform: `scale(${transformRef.current?.k ?? 1})`,
           }}
           className="trayOverlayCard"
         >

@@ -2,7 +2,7 @@ import { DndContext, useDroppable } from "@dnd-kit/core";
 import { DragEndEvent } from "@dnd-kit/core/dist/types";
 import { select } from "d3-selection";
 import { ZoomTransform, zoom } from "d3-zoom";
-import { memo, RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Card } from "./App";
 import { Cover, Draggable, NonDraggable } from "./Draggable";
 
@@ -11,12 +11,9 @@ import { Cover, Draggable, NonDraggable } from "./Draggable";
 const AllCards = memo(({
   cards,
   setHoverCard,
-  transformRef,
 }: {
   cards: Card[];
   setHoverCard(card: Card): void;
-  transformRef: RefObject<ZoomTransform>;
-
 }) => {
   return (<>
     {cards.map((card) => {
@@ -28,36 +25,35 @@ const AllCards = memo(({
         performance.mark('onMouseEnterStart');
       }
 
-      return (<NonDraggable card={card} key={card.id} onMouseEnter={onMouseEnter} transformRef={transformRef} />)
+      return (<NonDraggable card={card} key={card.id} onMouseEnter={onMouseEnter} />)
     })}
   </>)
 })
 AllCards.displayName = 'AllCards';
 
-export const Canvas = ({
+export const Canvas = memo(({
   cards,
   setCards,
-  hoverCard,
-  setHoverCard,
   transformRef,
-  setTransform,
+  // setTransform,
 }: {
   cards: Card[];
   setCards: (cards: Card[]) => void;
-  hoverCard: Card | null | undefined;
-  setHoverCard: (card: Card) => void;
-  transformRef: RefObject<ZoomTransform>;
-  setTransform(transform: ZoomTransform): void;
+  transformRef: React.MutableRefObject<ZoomTransform>;
+  // setTransform(transform: ZoomTransform): void;
 }) => {
   const [isDragging, setIsDragging] = useState(false);
 
-  const setDragging = () => {
+  const [hoverCard, setHoverCard] = useState<Card | undefined>(undefined)
+
+
+  const setDragging = useCallback(() => {
     setIsDragging(true);
     console.log('startDragging');
     performance.clearMarks();
     performance.clearMeasures();
     performance.mark('startDraggingStart');
-  }
+  }, [setIsDragging])
 
   // remove transform from the dependencies and use a ref, this is an event so can use a ref
   // without a problem. This gives the DndContext less reasons to rerender, and means the cache 
@@ -120,20 +116,6 @@ export const Canvas = ({
       console.log('endDragging', endDraggingMeasure?.duration);
     } catch { }
 
-    try {
-      performance.mark('panningEnd');
-      performance.measure('panning', 'panningStart', 'panningEnd');
-      const panningMeasure = performance.getEntriesByName('panning')?.[0];
-      console.log('panning', panningMeasure?.duration);
-    } catch { }
-
-    try {
-      performance.mark('zoomingEnd');
-      performance.measure('zooming', 'zoomingStart', 'zoomingEnd');
-      const zoomingMeasure = performance.getEntriesByName('zooming')?.[0];
-      console.log('zooming', zoomingMeasure?.duration);
-    } catch { }
-
     performance.clearMarks();
     performance.clearMeasures();
   })
@@ -151,9 +133,29 @@ export const Canvas = ({
   // update the transform when d3 zoom notifies of a change
   const updateTransform = useCallback(
     ({ transform }: { transform: ZoomTransform }) => {
-      setTransform(transform);
+      // setTransform(transform);
+
+      try {
+        performance.mark('zoomingOrPanningEnd');
+        performance.measure('zoomingOrPanning', 'zoomingOrPanningStart', 'zoomingOrPanningEnd');
+        const zoomingOrPanningMeasure = performance.getEntriesByName('zoomingOrPanning')?.[0];
+        console.log('zoomingOrPanning', zoomingOrPanningMeasure?.duration);
+      } catch { }
+      performance.clearMarks();
+      performance.clearMeasures();
+      performance.mark('zoomingOrPanningStart');
+
+
+      const canvasElement = document.getElementById('canvas');
+      if (canvasElement) {
+        canvasElement.style.transform = `translateX(${transform.x}px) translateY(${transform.y}px) scale(${transform.k})`;
+      }
+
+      transformRef.current = transform;
     },
-    [setTransform]
+    [
+      // setTransform
+    ]
   );
 
   useLayoutEffect(() => {
@@ -161,6 +163,34 @@ export const Canvas = ({
 
     // get transform change notifications from d3 zoom
     zoomBehavior.on("zoom", updateTransform);
+    zoomBehavior.on("start", () => {
+      console.log('zoomingOrPanning');
+      performance.clearMarks();
+      performance.clearMeasures();
+      performance.mark('zoomingOrPanningStart');
+
+      const canvasInnerElement = document.getElementById('canvasInner');
+      if (canvasInnerElement) {
+        canvasInnerElement.style.pointerEvents = "none";
+      }
+    }
+    );
+    zoomBehavior.on("end", () => {
+      const canvasInnerElement = document.getElementById('canvasInner');
+      if (canvasInnerElement) {
+        canvasInnerElement.style.pointerEvents = "auto";
+      }
+
+      try {
+        performance.mark('zoomingOrPanningEnd');
+        performance.measure('zoomingOrPanning', 'zoomingOrPanningStart', 'zoomingOrPanningEnd');
+        const zoomingOrPanningMeasure = performance.getEntriesByName('zoomingOrPanning')?.[0];
+        console.log('zoomingOrPanning', zoomingOrPanningMeasure?.duration);
+      } catch { }
+      performance.clearMarks();
+      performance.clearMeasures();
+
+    });
 
     // attach d3 zoom to the canvas div element, which will handle
     // mousewheel, gesture and drag events automatically for pan / zoom
@@ -175,24 +205,25 @@ export const Canvas = ({
         style={{
           // apply the transform from d3
           transformOrigin: "top left",
-          transform: `translate(${transformRef.current?.x ?? 0}px, ${transformRef.current?.y ?? 0}px)`,
-          scale: `${transformRef.current?.k ?? 1}`,
+          transform: `translateX(${transformRef.current?.x ?? 0}px) translateY(${transformRef.current?.y ?? 0}px) scale(${transformRef.current?.k ?? 1})`,
           position: "relative",
           height: "600px",
         }}
       >
+        <div
+          // otherise onMouseEnter gets triggered when dragging a card if you move the mouse fast 
+          // and it outpaces the card, which ends up in setHoverCard being called for a different
+          // card.
+          id="canvasInner"
+          style={{ pointerEvents: isDragging ? "none" : "auto" }}
+        >
+          <AllCards cards={cards} setHoverCard={setHoverCard} />
+        </div>
         <DndContext onDragEnd={updateDraggedCardPosition} onDragStart={setDragging}>
-          <div
-            // otherise onMouseEnter gets triggered when dragging a card if you move the mouse fast 
-            // and it outpaces the card, which ends up in setHoverCard being called for a different
-            // card.
-            style={{ pointerEvents: isDragging ? "none" : "auto" }}
-          >
-            <AllCards cards={cards} setHoverCard={setHoverCard} transformRef={transformRef} />
-          </div>
-          {hoverCard ? <><Cover card={hoverCard} transformRef={transformRef} /><Draggable card={hoverCard} transformRef={transformRef} /></> : null}
+          <Cover card={hoverCard} /><Draggable card={hoverCard} transformRef={transformRef} />
         </DndContext>
       </div>
     </div>
   );
-};
+});
+Canvas.displayName = 'Canvas';
