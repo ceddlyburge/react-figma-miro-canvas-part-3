@@ -7,7 +7,7 @@ import {
 } from "@dnd-kit/core";
 import { Coordinates, DragEndEvent, Translate } from "@dnd-kit/core/dist/types";
 import { ZoomTransform, zoomIdentity } from "d3-zoom";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Addable } from "./Addable";
 import "./App.css";
 import { Canvas } from "./Canvas";
@@ -41,8 +41,8 @@ const calculateCanvasPosition = (
 
 export const App = () => {
   const [cards, setCards] = useState<Card[]>(
-    [...Array(200).keys()].flatMap((x) =>
-      [...Array(100).keys()].map((y) => (
+    [...Array(10).keys()].flatMap((x) =>
+      [...Array(1000).keys()].map((y) => (
         {
           id: `${x}-${y}`,
           coordinates: { x: x * 80, y: y * 50 },
@@ -56,7 +56,34 @@ export const App = () => {
     useState<UniqueIdentifier | null>(null);
 
   // store the current transform from d3
-  const [transform, setTransform] = useState(zoomIdentity);
+  const [transform, _setTransform] = useState(zoomIdentity);
+  const setTransform = useCallback((theTransform: ZoomTransform) => {
+    console.log('zoomingOrPanningStart');
+    performance.clearMarks();
+    performance.clearMeasures();
+    performance.mark('zoomingOrPanningStart');
+
+    const canvasElement = document.getElementById('canvas');
+    if (canvasElement) {
+      canvasElement.style.transform = `translateX(${theTransform.x}px) translateY(${theTransform.y}px) scale(${theTransform.k})`;
+    }
+
+    _setTransform(theTransform);
+  }, []);
+
+  useEffect(() => {
+    try {
+      console.log('zoomingOrPanningEnd');
+
+      performance.mark('zoomingOrPanningEnd');
+      performance.measure('zoomingOrPanning', 'zoomingOrPanningStart', 'zoomingOrPanningEnd');
+      const zoomingOrPanningMeasure = performance.getEntriesByName('zoomingOrPanning')?.[0];
+      console.log('zoomingOrPanning', zoomingOrPanningMeasure?.duration);
+    } catch { }
+
+    performance.clearMarks();
+    performance.clearMeasures();
+  })
 
   const addDraggedTrayCardToCanvas = ({
     over,
