@@ -2,7 +2,7 @@ import { DndContext, useDroppable } from "@dnd-kit/core";
 import { DragEndEvent } from "@dnd-kit/core/dist/types";
 import { select } from "d3-selection";
 import { ZoomTransform, zoom } from "d3-zoom";
-import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { Card } from "./App";
 import { Draggable } from "./Draggable";
 
@@ -20,6 +20,11 @@ export const Canvas = ({
   const updateDraggedCardPosition = ({ delta, active }: DragEndEvent) => {
     if (!delta.x && !delta.y) return;
 
+    console.log('endDragging');
+    performance.clearMarks();
+    performance.clearMeasures();
+    performance.mark('endDraggingStart');
+
     setCards(
       cards.map((card) => {
         if (card.id === active.id) {
@@ -35,6 +40,32 @@ export const Canvas = ({
       })
     );
   };
+
+  const startDragging = useCallback(() => {
+    console.log('startDragging');
+    performance.clearMarks();
+    performance.clearMeasures();
+    performance.mark('startDraggingStart');
+  }, [])
+
+  const finishStartDragging = useCallback(() => {
+    try {
+      performance.mark('startDraggingEnd');
+      performance.measure('startDragging', 'startDraggingStart', 'startDraggingEnd');
+      const startDraggingMeasure = performance.getEntriesByName('startDragging')?.[0];
+      console.log('startDragging', startDraggingMeasure?.duration);
+    } catch { }
+  }, [])
+
+  useEffect(() => {
+
+    try {
+      performance.mark('endDraggingEnd');
+      performance.measure('endDragging', 'endDraggingStart', 'endDraggingEnd');
+      const endDraggingMeasure = performance.getEntriesByName('endDragging')?.[0];
+      console.log('endDragging', endDraggingMeasure?.duration);
+    } catch { }
+  });
 
   const { setNodeRef } = useDroppable({
     id: "canvas",
@@ -81,7 +112,7 @@ export const Canvas = ({
           height: "300px",
         }}
       >
-        <DndContext onDragEnd={updateDraggedCardPosition}>
+        <DndContext onDragEnd={updateDraggedCardPosition} onDragStart={startDragging} onDragMove={finishStartDragging}>
           {cards.map((card) => (
             <Draggable card={card} key={card.id} canvasTransform={transform} />
           ))}
